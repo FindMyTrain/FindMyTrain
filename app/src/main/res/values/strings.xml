@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">FindMyTrain</string>
+    <string-array name="routeNames">
+        <item>Select Route</item>
+        <item>Western</item>
+        <item>Central</item>
+        <item>Harbour</item>
+    </string-array>
+</resources>
