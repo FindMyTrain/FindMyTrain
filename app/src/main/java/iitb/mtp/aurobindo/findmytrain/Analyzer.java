@@ -104,7 +104,17 @@ public class Analyzer {
                     nearestStn.distOrigin - haversine(fd.lat,fd.lon,nearestStn.lat,nearestStn.lon);
             Log.d(TAG, "Final Data : "+fd.lat+", "+fd.lon+", "+fd.dist+", "+routeID+", "+direction+", "+fd.timeStamp);
         }
+
+        /******* Check if user is walking, sitting or running based on speed *******/
+        if(speedEligibility())  return false;
         return true;
+    }
+
+    private boolean speedEligibility() {
+        double dist = Math.abs(FinalData.finalData.get(0).dist - FinalData.finalData.get(FinalData.finalData.size()-1).dist);
+        double time = Math.abs(FinalData.finalData.get(0).timeStamp - FinalData.finalData.get(FinalData.finalData.size()-1).timeStamp);
+        if((dist/time) < 6 || (dist/time) >35)       return true;
+        return false;
     }
 
     /******* Finds the nearest station that is less than the distance 'dis' from terminal(flag) *********/
@@ -117,7 +127,7 @@ public class Analyzer {
                     else    return res;
                 }
                 else    {
-                    if(d.distOrigin>=46542.2721501698-dis){
+                    if(d.distOrigin>=StationMap.routeLength[routeID]-dis){
                         return d;
                     }
                 }

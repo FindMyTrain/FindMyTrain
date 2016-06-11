@@ -70,7 +70,8 @@ class StationMap    {
     public static double[][] terminalStnGPS = {{18.935147,72.827214,19.991363,72.743594},
                                                {18.941591,72.835881,19.235318,73.13092},
                                                {18.941591,72.835881,18.990857,73.120988}};
-public static int[] numStations = {36,26,26};
+    public static int[] numStations = {36,26,26};
+    public static double[] routeLength = {122538.654300734, 51004.8662463721, 46542.2721501698};
 }
 
 class SvmModel  {
