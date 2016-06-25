@@ -1,5 +1,6 @@
 package iitb.mtp.aurobindo.findmytrain;
 
+import android.Manifest;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -7,24 +8,32 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.telephony.CellLocation;
 import android.telephony.PhoneStateListener;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.util.Log;
+import android.content.pm.PackageManager;
 
 public class DataCollector extends Service implements SensorEventListener   {
 
     public String operator = "", TAG = "DataCollector";
-    public int cellID = 0, rssi = 0, count=0, flag=10, dataArraySizeThresh = 20;
+    public int cellID = 0, rssi = 0, count=0, flag=100000, dataArraySizeThresh = 20;
+    public static double GPSLat, GPSLong;
     public double x=0, y=0, z=0;
     public long tsLoc;
     public SensorManager sensormanager;
     public TelephonyManager tm;
     public MyPhoneStateListener MyListener;
+    public LocationManager GPSmgr;
 
     @Override
     public void onCreate() {
@@ -41,12 +50,41 @@ public class DataCollector extends Service implements SensorEventListener   {
         sensormanager.registerListener(this,
                 sensormanager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
                 SensorManager.SENSOR_DELAY_UI);
+
+        /***** Code to register location manager for GPS *******/
+
+        GPSmgr = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        GPSmgr.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, GPSlistener);
     }
+
+    LocationListener GPSlistener=new LocationListener() {
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {}
+
+        @Override
+        public void onProviderEnabled(String provider) {}
+
+        @Override
+        public void onProviderDisabled(String provider) {}
+
+        @Override
+        public void onLocationChanged(Location location) {
+            GPSLat=location.getLatitude();
+            GPSLong=location.getLongitude();
+//            Log.d(TAG, "onLocationChanged: "+GPSLat+","+GPSLong);
+        }
+    };
 
     @Override
     public int onStartCommand(final Intent intent, int flags, int startId) {
 
-        final Analyzer analyze = new Analyzer(new MainActivity());
+        final Analyzer analyze = new Analyzer(this);
         final int timeInterval = 60000;
 
         /** Thread to :
@@ -63,13 +101,16 @@ public class DataCollector extends Service implements SensorEventListener   {
 
                 /****** Reorient Accelerometer Data Every minute *******/
                 analyze.reorient(MotionData.motion);
-                Data.location.clear();
                 MotionData.motion.clear();
 
                 /****** Send data for analysis every 5 mins ******/
                 if(++count%5==0)    {
-                    if(Data.location.size()>dataArraySizeThresh && analyze.getGpsFromGsm()) {
+                    if(analyze.getGpsFromGsm()) {
+                        Data.location.clear();
                         analyze.isOnTrain();
+                    }
+                    else    {
+                        Log.d(TAG, "Not in train!!!!!");
                     }
                     MotionData.reorientedMotion.clear();
                 }
@@ -91,7 +132,7 @@ public class DataCollector extends Service implements SensorEventListener   {
             x = event.values[0];
             y = event.values[1];
             z = event.values[2];
-            MotionData.motion.add(new MotionData(x,y,z));
+            MotionData.motion.add(new MotionData(x, y, z));
         }
     }
 
@@ -111,7 +152,8 @@ public class DataCollector extends Service implements SensorEventListener   {
             try {
                 cellID = loc.getCid() & 0xffff;
                 tsLoc = System.currentTimeMillis()/1000;
-                Data.location.add(new Data(operator,cellID,rssi,tsLoc));
+                Data.location.add(new Data(operator,cellID,rssi,GPSLat,GPSLong,tsLoc));
+                Log.d(TAG, "onCellLocationChanged: " + cellID + "," + rssi);
             }
             catch(NullPointerException ne) { cellID = 0; }
         }
@@ -121,7 +163,8 @@ public class DataCollector extends Service implements SensorEventListener   {
             super.onSignalStrengthsChanged(signalStrength);
             rssi=-113+2*signalStrength.getGsmSignalStrength();
             tsLoc = System.currentTimeMillis()/1000;
-            if(cellID!=0)   Data.location.add(new Data(operator,cellID,rssi,tsLoc));
+            if(cellID!=0)   Data.location.add(new Data(operator,cellID,rssi,GPSLat,GPSLong,tsLoc));
+            Log.d(TAG, "onCellLocationChanged: "+cellID+","+rssi);
         }
     }
 

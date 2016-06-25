@@ -2,7 +2,6 @@ package iitb.mtp.aurobindo.findmytrain;
 
 
 import android.content.Context;
-import android.graphics.Color;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -19,12 +18,39 @@ public class Analyzer {
     public String TAG="Analyzer";
     public Context context;
 
-    public Analyzer(Context c) {
-        context = c;
+    public boolean getGpsFromGsm()  {
+        Log.d(TAG, "getGpsFromGsm: enter");
+        int[] r = new int[3];
+        int count=0;
+        double lat, lon;
+        long timeStamp;
+        String sql;
+
+        /** For all GSM points Find out the corresponding :
+         **** latitude
+         **** longitude
+         **** route
+         **** direction
+         **** distance from origin
+         **** timeStamp
+         */
+        for (Data loc: Data.location) {
+            Log.d(TAG, "DataCollected : "+ loc.timeStamp+","+loc.cellID+","+loc.RSSI+","+loc.lat+","+loc.lon);
+            /******* Send only 5 data from the entire window seperated by equal time Interval **********/
+            if(loc.lat !=0 && loc.lon !=0)    FinalData.finalData.add(new FinalData(loc.lat, loc.lon, -1, loc.timeStamp));
+        }
+
+        /****** RouteID is the route with maximum number of counts *******/
+        routeID = 1;
+
+        /****** get direction in which the trace is moving *******/
+        getDirection();
+
+        return true;
     }
 
-//    public boolean getGpsFromGsm()  {
-//        Log.d(TAG, "getGpsFromGsm: enter");
+//    public boolean getGpsFromGsmOLD()  {
+//
 //        int[] r = new int[3];
 //        int count=0;
 //        double lat, lon;
@@ -40,86 +66,35 @@ public class Analyzer {
 //         **** timeStamp
 //         */
 //        for (Data loc: Data.location) {
-//            Log.d(TAG, "DataCollected : "+ loc.timeStamp+","+loc.cellID+","+loc.RSSI+","+loc.lat+","+loc.lon);
-//            /******* Send only 5 data from the entire window seperated by equal time Interval **********/
-//            if(loc.lat !=0 && loc.lon !=0)    FinalData.finalData.add(new FinalData(loc.lat, loc.lon, -1, loc.timeStamp));
+//            sql = "SELECT * FROM "+ DatabaseHandler.locationMAP +" WHERE cellID = "+loc.cellID+
+//                    " AND RSSI = "+loc.RSSI + " AND operator = "+loc.operator;
+//            ArrayList<ArrayList<String>> resultSet = new DatabaseHandler(new MainActivity()).readLocationMap(sql);
+//            if(!resultSet.isEmpty())    {
+//                count++;
+//                lat = Double.parseDouble(resultSet.get(0).get(4));
+//                lon = Double.parseDouble(resultSet.get(0).get(5));
+//
+//                /***** Increse route count if GSM matches the corresponding route *****/
+//                if(Integer.parseInt(resultSet.get(0).get(0))==0)   r[0]++;
+//                if(Integer.parseInt(resultSet.get(0).get(0))==1)   r[1]++;
+//                if(Integer.parseInt(resultSet.get(0).get(0))==2)   r[2]++;
+//
+//                timeStamp = loc.timeStamp;
+//
+//                /******* Send only 5 data from the entire window seperated by equal time Interval **********/
+//                if(count % Data.location.size()/5 == 0)    FinalData.finalData.add(new FinalData(lat, lon, -1, timeStamp));
+//            }
 //        }
 //
 //        /****** RouteID is the route with maximum number of counts *******/
-//        routeID = 1;
+//        routeID = r[0]>r[1]?(r[0]>r[2]?0:2):(r[1]>r[2]?1:2);
 //
 //        /****** get direction in which the trace is moving *******/
-//        getDirection();
-//
-//        return true;
-//    }
-
-    public boolean getGpsFromGsm()  {
-
-        int[] r = new int[3];
-        int count=0;
-        double lat=0, lon=0;
-        long timeStamp;
-        String sql, op;
-
-        /** For all GSM points Find out the corresponding :
-         **** latitude
-         **** longitude
-         **** route
-         **** direction
-         **** distance from origin
-         **** timeStamp
-         */
-        for (Data loc: Data.location) {
-
-            op = getOperator(loc.operator);
-            sql = "SELECT * FROM "+ DatabaseHandler.locationMAP +" WHERE cellID = "+loc.cellID+
-                    " AND RSSI = "+loc.RSSI + " AND operator = \""+op+"\"";
-            ArrayList<ArrayList<String>> resultSet = new DatabaseHandler(context).readLocationMap(sql);
-            if(!resultSet.isEmpty())    {
-                count++;
-                lat = Double.parseDouble(resultSet.get(0).get(4));
-                lon = Double.parseDouble(resultSet.get(0).get(5));
-
-                /***** Increse route count if GSM matches the corresponding route *****/
-                if(Integer.parseInt(resultSet.get(0).get(0))==0)   r[0]++;
-                if(Integer.parseInt(resultSet.get(0).get(0))==1)   r[1]++;
-                if(Integer.parseInt(resultSet.get(0).get(0))==2)   r[2]++;
-
-                timeStamp = loc.timeStamp;
-
-                /******* Send only 5 data from the entire window seperated by equal time Interval **********/
-//                if(count % Data.location.size()/5 == 0)
-                FinalData.finalData.add(new FinalData(lat, lon, -1, timeStamp));
-            }
-            else {
-                Log.d(TAG, "getGpsFromGsm: Data not in GSM fingerprinting db"+loc.cellID+", "+loc.RSSI);
-            }
-        }
-
-        /****** RouteID is the route with maximum number of counts *******/
-        routeID = r[0]>r[1]?(r[0]>r[2]?0:2):(r[1]>r[2]?1:2);
-
-        /****** get direction in which the trace is moving *******/
 //        if(!getDirection()) return false;
-
-        getDirection();
-
-        Log.d(TAG, "getGpsFromGsm: Fin Data"+lat+","+lon+","+routeID+","+direction);
-
-        /********* If number of matches of cellID_rssi pair doest exceed a threshold, reject the data ********/
+//
+//        /********* If number of matches of cellID_rssi pair doest exceed a threshold, reject the data ********/
 //        return (count/Data.location.size() > locationMatchThresh);
-        return true;
-    }
-
-    /******* get Operator name from Operator field ***********/
-    public String getOperator(String op)    {
-        if(op.contains("irtel") || op.contains("IRTEL"))    return "airtel";
-        if(op.contains("ircel") || op.contains("IRCEL"))  return "idea";
-        if(op.contains("dea") || op.contains("DEA"))  return "idea";
-        if(op.contains("dafone") || op.contains("DAFONE"))  return "vodafone";
-        return null;
-    }
+//    }
 
     public boolean getDirection()  {
 
@@ -170,7 +145,7 @@ public class Analyzer {
     private boolean speedEligibility() {
         double dist = Math.abs(FinalData.finalData.get(0).dist - FinalData.finalData.get(FinalData.finalData.size()-1).dist);
         double time = Math.abs(FinalData.finalData.get(0).timeStamp - FinalData.finalData.get(FinalData.finalData.size()-1).timeStamp);
-        if((dist/time) < 6 )       return true;
+        if((dist/time) < 6 || (dist/time) >35)       return true;
         return false;
     }
 
@@ -301,8 +276,6 @@ public class Analyzer {
 
         /****** If svm classifier detects data on Train, Send data to server *******/
         if(yPred[0] == 1) {
-//            MainActivity.onTrn.setTextColor(Color.GREEN);
-//            MainActivity.onTrn.setText("In Train");
             try {
                 Log.d(TAG, "isOnTrain: True...... Yes");
                 /******* Create json array of Location data *******/
@@ -312,7 +285,7 @@ public class Analyzer {
                 RequestHandler request = new RequestHandler();
                 request.sendPostRequest("http://safestreet.cse.iitb.ac.in/findmytrain/FindMyTrain/RequestHandler", jsonArray);
             } catch (JSONException e) {
-                Log.d(TAG, "isOnTrain: json exception");
+                return;
             }
         }
         else Log.d(TAG, "isOnTrain: Not on Train");
@@ -334,10 +307,9 @@ public class Analyzer {
             jObj.put("timeStamp",d.timeStamp);
             jArray.put(jObj);
         }
-        FinalData.finalData.clear();
+
         JSONObject data = new JSONObject();
         data.put("data", jArray);
-        Log.d(TAG, "getJsonArray: "+data.toString());
         return (data.toString());
     }
 }

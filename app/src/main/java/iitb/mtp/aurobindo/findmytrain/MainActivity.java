@@ -12,8 +12,10 @@ package iitb.mtp.aurobindo.findmytrain;
 
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.Spinner;
@@ -36,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
     TextView tvResults;
     Spinner routeResults;
     String results="";
-
+    static TextView onTrn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +51,9 @@ public class MainActivity extends AppCompatActivity {
         getResults = (ImageButton) findViewById(R.id.imgBtn_getResults);
         tvResults = (TextView) findViewById(R.id.tv_Result);
         routeResults = (Spinner) findViewById(R.id.spinner_Route);
+        onTrn = (TextView) findViewById(R.id.onTrain_tv);
+        onTrn.setText("Not in Train");
+        onTrn.setTextColor(Color.RED);
 
         /******* Save SVM model for later Use ********/
         saveSvmModel();
@@ -59,26 +64,22 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Toast.makeText(getApplicationContext(),"Fetching results from server...",Toast.LENGTH_SHORT).show();
 
+                int spinner_pos = routeResults.getSelectedItemPosition();
+
                 /***** Request current Train Locations as recently updated in server ****/
-                results = new RequestHandler().sendPostRequest("http://10.129.28.209:808/FindYourTrain/Reporter","");
-                tvResults.setText(results);
+                results = new RequestHandler().sendPostRequest("http://safestreet.cse.iitb.ac.in/findmytrain/FindMyTrain/Reporter",(spinner_pos-1)+"");
+                tvResults.setText(results.toString());
+//                Log.d("Results", "onClick: Location :"+DataCollector.GPSLat+","+DataCollector.GPSLong+" : Estimated : "+results);
             }
         });
 
         /***** Initialise GSM 2 GPS database from csv file ******/
-
-        /*************** Initializer **************/
         DatabaseHandler myDB = new DatabaseHandler(this);
-        List<String> dataFile;
+
+
         /*** Insert to stationMap ***/
         is = getResources().openRawResource(R.raw.stn);
         insertToStationMap(is);
-
-        /*** Insert to locationMAP ***/
-        is = getResources().openRawResource(R.raw.data);
-        dataFile = readCsvFile(is);
-
-        myDB.insertLocationMap(dataFile);
 
     }
 
@@ -96,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
         svm_model model;
         try {
             /************* Pass the Reader object of model file to svm_load_model() method of libsvm ************/
-            InputStream is = getResources().getAssets().open("bustrain.model");
+            InputStream is = getResources().getAssets().open("classify.model");
             BufferedReader modelReader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
             model = svm.svm_load_model(modelReader);
             /******** Save the svm model in a static object for further use ***********/
@@ -105,26 +106,6 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(), "Error in SVM Model file loading!!!", Toast.LENGTH_SHORT).show();
             onDestroy();
         }
-    }
-
-    public List<String> readCsvFile(InputStream is) {
-        List<String> resultList = new ArrayList<>();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        try {
-            String csvLine;
-            while ((csvLine = reader.readLine()) != null) {
-                resultList.add(csvLine);
-            }
-        } catch (IOException ex) {
-            Toast.makeText(getApplicationContext(), "Error in database file loading!!!", Toast.LENGTH_SHORT).show();
-        } finally {
-            try {
-                is.close();
-            } catch (IOException e) {
-                Toast.makeText(getApplicationContext(), "Error in database file loading!!!", Toast.LENGTH_SHORT).show();
-            }
-        }
-        return resultList;
     }
 
     public void insertToStationMap(InputStream is) {

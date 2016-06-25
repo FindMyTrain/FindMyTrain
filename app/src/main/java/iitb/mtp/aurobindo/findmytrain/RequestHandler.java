@@ -69,7 +69,7 @@ public class RequestHandler {
                     e.printStackTrace();
                 }
                 ret[0] = response;
-                Log.d("Response: ", response);
+                Log.d("Response: ", response==null?"Sorry!!! No data to Analyze!!!":response + " || " + DataCollector.GPSLat+","+DataCollector.GPSLong);
             }
         });
 

@@ -9,12 +9,15 @@ import libsvm.svm_model;
 class Data {
     public String operator;
     public int cellID, RSSI;
+    public double lat, lon;
     public long timeStamp;
 
-    public Data(String operator, int cellID, int RSSI, long timeStamp) {
+    public Data(String operator, int cellID, int RSSI, double lat, double lon, long timeStamp) {
         this.operator = operator;
         this.cellID = cellID;
         this.RSSI = RSSI;
+        this.lat = lat;
+        this.lon = lon;
         this.timeStamp = timeStamp;
     }
 
@@ -76,4 +79,8 @@ class StationMap    {
 
 class SvmModel  {
     static svm_model model;
+}
+
+class CurrentGPS {
+    public static double GPSLat, GPSLong;
 }
